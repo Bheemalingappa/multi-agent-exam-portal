@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: multi-agent-exam
+  labels:
+    app.kubernetes.io/name: exam-portal-backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  selector:
+    app.kubernetes.io/name: exam-portal-backend

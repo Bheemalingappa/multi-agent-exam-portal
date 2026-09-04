@@ -1,0 +1,21 @@
+# Minimal, non-root Alpine image for untrusted user code execution
+FROM python:3.11-alpine
+
+# Set environment variables for unbuffered execution
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Create dedicated non-privileged system group and user
+RUN addgroup -g 10001 sandboxgroup && \
+    adduser -u 10001 -G sandboxgroup -s /bin/sh -D sandboxuser
+
+# Create isolated execution workspace and change ownership
+WORKDIR /sandbox
+RUN chown -R sandboxuser:sandboxgroup /sandbox && \
+    chmod 755 /sandbox
+
+# Drop root operational privileges and switch to dedicated system user
+USER sandboxuser:sandboxgroup
+
+# Direct execution entrypoint
+ENTRYPOINT ["python"]

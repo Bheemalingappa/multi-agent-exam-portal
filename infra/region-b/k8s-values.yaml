@@ -1,0 +1,12 @@
+global:
+  region: us-west-2
+  role: secondary-standby
+
+backend:
+  replicaCount: 2
+
+celery:
+  replicaCount: 2
+
+ingress:
+  host: us-west-2.exam.example.com

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "multi-agent-exam-portal.fullname" . }}-config
+  namespace: {{ .Values.global.namespace }}
+data:
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  AI_PROVIDER: {{ .Values.config.AI_PROVIDER | quote }}
+  JWT_ALGORITHM: {{ .Values.config.JWT_ALGORITHM | quote }}
+  CORS_ORIGINS: {{ .Values.config.CORS_ORIGINS | quote }}
+  SANDBOX_MEM_LIMIT: {{ .Values.config.SANDBOX_MEM_LIMIT | quote }}
+  SANDBOX_CPU_QUOTA: {{ .Values.config.SANDBOX_CPU_QUOTA | quote }}
+  SANDBOX_TIMEOUT_SECONDS: {{ .Values.config.SANDBOX_TIMEOUT_SECONDS | quote }}
+  MAX_A2A_ROUNDS: {{ .Values.config.MAX_A2A_ROUNDS | quote }}

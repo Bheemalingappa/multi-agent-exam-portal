@@ -1,0 +1,37 @@
+{
+  "blocked_modules": [
+    "os",
+    "sys",
+    "subprocess",
+    "ctypes",
+    "socket",
+    "shutil",
+    "importlib",
+    "multiprocessing",
+    "threading",
+    "signal",
+    "pty",
+    "code",
+    "pickle",
+    "webbrowser"
+  ],
+  "blocked_functions": [
+    "eval",
+    "exec",
+    "compile",
+    "__import__",
+    "open",
+    "getattr",
+    "setattr",
+    "delattr",
+    "globals",
+    "locals"
+  ],
+  "blocked_attributes": [
+    "__subclasses__",
+    "__bases__",
+    "__mro__",
+    "__globals__",
+    "__code__"
+  ]
+}

@@ -1,0 +1,24 @@
+name: Production Kubernetes Deployment Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  helm-deploy:
+    name: Helm Lint, Template & Deploy Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.12.0'
+
+      - name: Lint Helm Chart
+        run: helm lint helm/multi-agent-exam-portal
+
+      - name: Template Helm Chart Manifests
+        run: helm template multi-agent-exam helm/multi-agent-exam-portal

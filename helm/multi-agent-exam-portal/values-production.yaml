@@ -1,0 +1,21 @@
+global:
+  environment: production
+
+backend:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+frontend:
+  replicaCount: 3
+
+celery:
+  replicaCount: 4
+
+ingress:
+  host: exam.production.com

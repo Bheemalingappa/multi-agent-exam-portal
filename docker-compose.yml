@@ -1,0 +1,135 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: exam_portal_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password
+      POSTGRES_DB: exam_portal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exam_user -d exam_portal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: exam_portal_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    container_name: exam_portal_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME}
+      API_V1_STR: ${API_V1_STR}
+      LOG_LEVEL: ${LOG_LEVEL}
+
+      DATABASE_URL: postgresql://exam_user:exam_password@postgres:5432/exam_portal
+      REDIS_BROKER_URL: redis://redis:6379/0
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES}
+
+      MAX_A2A_ROUNDS: ${MAX_A2A_ROUNDS}
+      ENABLE_ANOMALY_ORACLE: ${ENABLE_ANOMALY_ORACLE}
+      ENABLE_MCP_CONTEXT: ${ENABLE_MCP_CONTEXT}
+
+      CORS_ORIGINS: ${CORS_ORIGINS}
+
+      AI_PROVIDER: ${AI_PROVIDER}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL}
+      MAX_GENERATED_QUESTIONS: ${MAX_GENERATED_QUESTIONS}
+
+      AWS_REGION: ${AWS_REGION}
+      AWS_DEFAULT_REGION: ${AWS_REGION}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID}
+
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    container_name: exam_portal_celery_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME}
+      API_V1_STR: ${API_V1_STR}
+      LOG_LEVEL: ${LOG_LEVEL}
+
+      DATABASE_URL: postgresql://exam_user:exam_password@postgres:5432/exam_portal
+      REDIS_BROKER_URL: redis://redis:6379/0
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES}
+
+      MAX_A2A_ROUNDS: ${MAX_A2A_ROUNDS}
+      ENABLE_ANOMALY_ORACLE: ${ENABLE_ANOMALY_ORACLE}
+      ENABLE_MCP_CONTEXT: ${ENABLE_MCP_CONTEXT}
+
+      CORS_ORIGINS: ${CORS_ORIGINS}
+
+      AI_PROVIDER: ${AI_PROVIDER}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL}
+      MAX_GENERATED_QUESTIONS: ${MAX_GENERATED_QUESTIONS}
+
+      AWS_REGION: ${AWS_REGION}
+      AWS_DEFAULT_REGION: ${AWS_REGION}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID}
+
+    command:
+      [
+        "celery",
+        "-A",
+        "app.pipeline.celery_app",
+        "worker",
+        "--loglevel=info"
+      ]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: exam_portal_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+  redis_data:

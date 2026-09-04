@@ -1,0 +1,12 @@
+global:
+  region: us-east-1
+  role: primary
+
+backend:
+  replicaCount: 3
+
+celery:
+  replicaCount: 4
+
+ingress:
+  host: us-east-1.exam.example.com

@@ -1,0 +1,38 @@
+# Environment & Credentials
+.env
+.env.*
+!.env.example
+
+# Terraform State & Plans
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfplan
+tfplan*
+
+# Python Caches & Environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+venv/
+.venv/
+env/
+
+# Node & Frontend Build Artifacts
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

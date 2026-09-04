@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "multi-agent-exam-portal.fullname" . }}-celery-worker
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.celery.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "multi-agent-exam-portal.name" . }}-celery-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "multi-agent-exam-portal.name" . }}-celery-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: celery-worker
+          image: "{{ .Values.celery.image.repository }}:{{ .Values.celery.image.tag }}"
+          imagePullPolicy: {{ .Values.celery.image.pullPolicy }}
+          command: ["celery", "-A", "app.pipeline.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "multi-agent-exam-portal.fullname" . }}-config
+            - secretRef:
+                name: {{ include "multi-agent-exam-portal.fullname" . }}-secrets
+          resources:
+            {{- toYaml .Values.celery.resources | nindent 12 }}
+          volumeMounts:
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock

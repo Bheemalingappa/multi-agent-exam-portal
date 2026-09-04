@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exam-portal-frontend
+  namespace: multi-agent-exam
+  labels:
+    app.kubernetes.io/name: exam-portal-frontend
+    app.kubernetes.io/component: web-ui
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: exam-portal-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: exam-portal-frontend
+        app.kubernetes.io/component: web-ui
+    spec:
+      containers:
+        - name: frontend
+          image: 053578819971.dkr.ecr.us-east-1.amazonaws.com/multi-agent-exam-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
