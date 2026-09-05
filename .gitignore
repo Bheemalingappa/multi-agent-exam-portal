@@ -36,3 +36,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Temporary patch/debug artifacts
+scratch/patch.json
+scratch/secret_patch.json

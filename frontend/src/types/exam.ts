@@ -52,6 +52,7 @@ export interface ExamAttempt {
   remaining_seconds: number;
   submitted_at?: string;
   completed_at?: string;
+  answers?: Record<string, any>;
   total_score: number;
   max_score: number;
 }

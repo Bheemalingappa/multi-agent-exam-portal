@@ -1,8 +1,11 @@
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional, Dict, Any
 
 class AttemptStartSchema(BaseModel):
     exam_id: str
+
+class AnswerSaveSchema(BaseModel):
+    answers: Dict[str, Any]
 
 class AttemptResponseSchema(BaseModel):
     id: str
@@ -14,5 +17,6 @@ class AttemptResponseSchema(BaseModel):
     remaining_seconds: int
     submitted_at: Optional[Any] = None
     completed_at: Optional[Any] = None
+    answers: Optional[Dict[str, Any]] = None
     total_score: float
     max_score: float

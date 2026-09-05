@@ -69,6 +69,9 @@ class ExamAssignment(Base):
     class_level = Column(Integer, nullable=False, index=True)
     assigned_by = Column(UUID(as_uuid=True), ForeignKey("dim_users.id", ondelete="SET NULL"), nullable=True)
     status = Column(String(50), nullable=False, default="ACTIVE", index=True)
+    start_at = Column(DateTime(timezone=True), nullable=True)
+    end_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     exam = relationship("Exam", back_populates="assignments")
@@ -142,6 +145,7 @@ class ExamAttempt(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    answers = Column(JSONB, nullable=False, default=dict)
     total_score = Column(Numeric(5, 2), default=0.00)
     max_score = Column(Numeric(5, 2), default=100.00)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
@@ -349,3 +353,32 @@ class QuestionPaper(Base):
 
     creator = relationship("User")
     published_exam = relationship("Exam")
+
+class ExamEvaluation(Base):
+    __tablename__ = "fact_exam_evaluations"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    attempt_id = Column(UUID(as_uuid=True), ForeignKey("fact_exam_attempts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    exam_id = Column(UUID(as_uuid=True), ForeignKey("dim_exams.id", ondelete="CASCADE"), nullable=False, index=True)
+    candidate_id = Column(UUID(as_uuid=True), ForeignKey("dim_users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    status = Column(String(50), nullable=False, default="COMPLETED", index=True)
+    total_score = Column(Numeric(5, 2), nullable=False, default=0.00)
+    maximum_score = Column(Numeric(5, 2), nullable=False, default=100.00)
+    percentage = Column(Numeric(5, 2), nullable=False, default=0.00)
+    grade = Column(String(10), nullable=False, default="F")
+
+    question_results = Column(JSONB, nullable=False, default=list)
+    evaluator_metadata = Column(JSONB, nullable=False, default=dict)
+    error_message = Column(Text, nullable=True)
+
+    started_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    attempt = relationship("ExamAttempt", backref="evaluation")
+    exam = relationship("Exam")
+    candidate = relationship("User")
+

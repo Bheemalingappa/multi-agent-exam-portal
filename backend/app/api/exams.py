@@ -12,8 +12,13 @@ from app.schemas.exam import ExamCreateSchema, ExamUpdateSchema, ExamResponseSch
 
 router = APIRouter(prefix="/exams", tags=["Exam Management"])
 
+from datetime import datetime
+
 class AssignExamRequest(BaseModel):
     class_level: int = Field(..., ge=1, le=12)
+    start_at: Optional[datetime] = None
+    end_at: Optional[datetime] = None
+    is_active: Optional[bool] = True
 
 @router.post("", response_model=ExamResponseSchema, status_code=status.HTTP_201_CREATED)
 def create_exam(
@@ -243,6 +248,9 @@ def assign_exam_endpoint(
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found.")
 
+    if current_user.role != "admin" and exam.created_by is not None and exam.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this exam.")
+
     if not exam.is_published:
         raise HTTPException(status_code=400, detail="Exam must be published before it can be assigned to a class.")
 
@@ -257,17 +265,28 @@ def assign_exam_endpoint(
         ExamAssignment.class_level == payload.class_level
     ).first()
 
+    is_act = payload.is_active if payload.is_active is not None else True
+    status_val = "ACTIVE" if is_act else "INACTIVE"
+
     if not assignment:
         assignment = ExamAssignment(
             exam_id=exam.id,
             class_level=payload.class_level,
             assigned_by=current_user.id,
-            status="ACTIVE"
+            status=status_val,
+            start_at=payload.start_at,
+            end_at=payload.end_at,
+            is_active=is_act
         )
         db.add(assignment)
     else:
-        assignment.status = "ACTIVE"
+        assignment.status = status_val
+        assignment.is_active = is_act
         assignment.assigned_by = current_user.id
+        if payload.start_at is not None:
+            assignment.start_at = payload.start_at
+        if payload.end_at is not None:
+            assignment.end_at = payload.end_at
 
     # Update QuestionPaper status if exists
     qp = db.query(QuestionPaper).filter(QuestionPaper.published_exam_id == exam.id).first()
@@ -281,6 +300,9 @@ def assign_exam_endpoint(
         "id": str(assignment.id),
         "exam_id": str(assignment.exam_id),
         "class_level": assignment.class_level,
+        "start_at": assignment.start_at.isoformat() if assignment.start_at else None,
+        "end_at": assignment.end_at.isoformat() if assignment.end_at else None,
+        "is_active": assignment.is_active,
         "assigned_by": str(assignment.assigned_by) if assignment.assigned_by else None,
         "status": assignment.status,
         "created_at": assignment.created_at

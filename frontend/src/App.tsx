@@ -18,6 +18,8 @@ import { CandidateIDEPage } from './pages/candidate/CandidateIDEPage';
 import { SubmissionResultPage } from './pages/candidate/SubmissionResultPage';
 import { CandidateResultsHistoryPage } from './pages/candidate/CandidateResultsHistoryPage';
 
+import { StudentResultPage } from './pages/candidate/StudentResultPage';
+
 import { RecruiterDashboard } from './pages/recruiter/RecruiterDashboard';
 import { RecruiterExamsPage } from './pages/recruiter/RecruiterExamsPage';
 import { CreateExamPage } from './pages/recruiter/CreateExamPage';
@@ -58,6 +60,7 @@ export const App: React.FC = () => {
                 <Route path="/candidate" element={<CandidateDashboard />} />
                 <Route path="/candidate/exams/:examId" element={<ExamDetailPage />} />
                 <Route path="/candidate/attempts/:attemptId" element={<CandidateIDEPage />} />
+                <Route path="/candidate/attempts/:attemptId/result" element={<StudentResultPage />} />
                 <Route path="/candidate/submissions/:submissionId" element={<SubmissionResultPage />} />
                 <Route path="/candidate/results" element={<CandidateResultsHistoryPage />} />
               </Route>

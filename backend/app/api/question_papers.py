@@ -17,6 +17,7 @@ from app.database.models import User, QuestionPaper, Exam, Question, TestCase
 from app.api.auth import get_current_user
 from app.ai.question_generator import generate_ai_question_paper
 from app.ai.provider import get_question_generator_provider
+from app.core.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -328,8 +329,16 @@ def generate_question_paper_endpoint(
             detail="Question count cannot exceed 100.",
         )
 
+    configured_provider = settings.AI_PROVIDER.lower().strip()
     ai_provider = get_question_generator_provider()
     provider_name = getattr(ai_provider, "provider_name", "AI") if ai_provider else None
+
+    if configured_provider != "deterministic" and ai_provider is None:
+        logger.error("AI provider '%s' is configured but failed to initialize.", configured_provider)
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI provider '{configured_provider}' is configured but failed to initialize. Please check API key and configuration.",
+        )
 
     if ai_provider is not None:
         try:
@@ -757,12 +766,56 @@ def publish_question_paper(
     # Prevent duplicate publishing.
     if qp.published_exam_id:
         return {
-            "message": (
-                "Question paper is already published."
-            ),
+            "message": "Question paper is already published.",
             "question_paper_id": str(qp.id),
             "exam_id": str(qp.published_exam_id),
         }
+
+    # Validation checks before publishing
+    sections = qp.sections or []
+    if not sections:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot publish a question paper with no sections.",
+        )
+
+    all_questions = []
+    for s_idx, sec in enumerate(sections):
+        sec_qs = sec.get("questions", [])
+        if not sec_qs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Section {s_idx + 1} ({sec.get('name', 'Section')}) contains no questions.",
+            )
+        for q_idx, q in enumerate(sec_qs):
+            q_text = (q.get("question") or q.get("description") or "").strip()
+            if not q_text:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Question {q.get('number', q_idx + 1)} in Section {s_idx + 1} has empty text.",
+                )
+            
+            q_type = sec.get("question_type", "MCQ").upper()
+            options = q.get("options", [])
+            if q_type == "MCQ" or options:
+                if not isinstance(options, list) or len(options) != 4 or any(not str(opt).strip() for opt in options):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"MCQ Question {q.get('number', q_idx + 1)} must have exactly 4 non-empty options.",
+                    )
+                c_ans = str(q.get("correct_answer", "")).strip()
+                if not c_ans:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Question {q.get('number', q_idx + 1)} is missing a correct answer.",
+                    )
+            all_questions.append(q)
+
+    if not all_questions:
+        raise HTTPException(
+            status_code=400,
+            detail="Question paper contains 0 questions. Please add questions before publishing.",
+        )
 
     new_exam = Exam(
         title=qp.title,

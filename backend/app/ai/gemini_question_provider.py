@@ -3,8 +3,9 @@ import time
 import logging
 from typing import Dict, Any, Optional
 
-import google.generativeai as genai
-from google.api_core import exceptions
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 
 from app.ai.question_provider import QuestionGeneratorProvider
 from app.core.config import settings
@@ -17,10 +18,9 @@ class GeminiQuestionGeneratorProvider(QuestionGeneratorProvider):
     def __init__(self):
         api_key = settings.GEMINI_API_KEY or settings.LLM_API_KEY
         if not api_key:
-            logger.warning("Gemini API key is not configured.")
-        genai.configure(api_key=api_key)
-        model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
-        self.model = genai.GenerativeModel(model_name)
+            raise ValueError("No API key was provided. Please pass a valid API key.")
+        self.client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
+        self.model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
         self.provider_name = "GEMINI"
 
     def health_check(self) -> bool:
@@ -69,9 +69,12 @@ class GeminiQuestionGeneratorProvider(QuestionGeneratorProvider):
 
         for attempt in range(1, max_retries + 1):
             try:
-                response = self.model.generate_content(
-                    prompt,
-                    generation_config={"response_mime_type": "application/json"}
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    ),
                 )
 
                 if not response or not response.text:
@@ -102,12 +105,19 @@ class GeminiQuestionGeneratorProvider(QuestionGeneratorProvider):
                 logger.info(f"Gemini successfully generated {len(validated['questions'])} questions (Mode: {source_type})")
                 return validated
 
-            except (exceptions.ServiceUnavailable, exceptions.DeadlineExceeded, exceptions.ResourceExhausted) as exc:
-                logger.warning(f"Transient Gemini error (attempt {attempt}/{max_retries}): {exc}")
+            except APIError as exc:
+                code = getattr(exc, "code", None)
+                if code in (400, 401, 403, 429):
+                    logger.error(f"Non-retriable/Rate-limited Gemini API error ({code}): {exc}")
+                    raise exc
+                
                 if attempt == max_retries:
                     logger.error(f"Gemini failed after {max_retries} attempts: {exc}")
                     raise exc
-                time.sleep(backoff_seconds * (2 ** (attempt - 1)))
+
+                sleep_time = min(backoff_seconds * (2 ** (attempt - 1)), 2.0)
+                logger.warning(f"Transient Gemini API error (attempt {attempt}/{max_retries}, code={code}). Retrying in {sleep_time}s... Error: {exc}")
+                time.sleep(sleep_time)
 
             except Exception as exc:
                 logger.error(f"Gemini generation error on attempt {attempt}: {exc}")

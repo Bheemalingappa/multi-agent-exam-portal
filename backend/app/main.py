@@ -46,6 +46,10 @@ async def lifespan(app: FastAPI):
             conn.execute(text("ALTER TABLE dim_exams ADD COLUMN IF NOT EXISTS language VARCHAR(50) DEFAULT 'English';"))
             conn.execute(text("ALTER TABLE dim_question_papers ADD COLUMN IF NOT EXISTS language VARCHAR(50) DEFAULT 'English';"))
             conn.execute(text("ALTER TABLE dim_question_papers ADD COLUMN IF NOT EXISTS generation_provider VARCHAR(50) DEFAULT 'DETERMINISTIC_FALLBACK';"))
+            conn.execute(text("ALTER TABLE dim_question_papers ADD COLUMN IF NOT EXISTS source_type VARCHAR(50) DEFAULT 'TOPIC_ONLY';"))
+            conn.execute(text("ALTER TABLE dim_question_papers ADD COLUMN IF NOT EXISTS source_document_id UUID;"))
+            conn.execute(text("ALTER TABLE dim_question_papers ADD COLUMN IF NOT EXISTS source_context TEXT;"))
+            conn.execute(text("ALTER TABLE dim_question_papers ADD COLUMN IF NOT EXISTS exact_topic VARCHAR(255);"))
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS fact_exam_assignments (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,6 +60,32 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+            conn.execute(text("ALTER TABLE fact_exam_assignments ADD COLUMN IF NOT EXISTS start_at TIMESTAMP WITH TIME ZONE;"))
+            conn.execute(text("ALTER TABLE fact_exam_assignments ADD COLUMN IF NOT EXISTS end_at TIMESTAMP WITH TIME ZONE;"))
+            conn.execute(text("ALTER TABLE fact_exam_assignments ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
+            conn.execute(text("ALTER TABLE fact_exam_attempts ADD COLUMN IF NOT EXISTS answers JSONB DEFAULT '{}';"))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS fact_exam_evaluations (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    attempt_id UUID NOT NULL UNIQUE REFERENCES fact_exam_attempts(id) ON DELETE CASCADE,
+                    exam_id UUID NOT NULL REFERENCES dim_exams(id) ON DELETE CASCADE,
+                    candidate_id UUID NOT NULL REFERENCES dim_users(id) ON DELETE CASCADE,
+                    status VARCHAR(50) NOT NULL DEFAULT 'COMPLETED',
+                    total_score NUMERIC(5,2) NOT NULL DEFAULT 0.00,
+                    maximum_score NUMERIC(5,2) NOT NULL DEFAULT 100.00,
+                    percentage NUMERIC(5,2) NOT NULL DEFAULT 0.00,
+                    grade VARCHAR(10) NOT NULL DEFAULT 'F',
+                    question_results JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    evaluator_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    error_message TEXT,
+                    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP WITH TIME ZONE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_fact_exam_evaluations_attempt ON fact_exam_evaluations(attempt_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_fact_exam_evaluations_candidate ON fact_exam_evaluations(candidate_id);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_fact_exam_assignments_exam_class ON fact_exam_assignments(exam_id, class_level, status);"))
             conn.execute(text("""
                 UPDATE dim_exams 
@@ -127,11 +157,13 @@ app.include_router(analytics.router, prefix=settings.API_V1_STR)
 app.include_router(question_papers.router, prefix=settings.API_V1_STR)
 
 @app.get("/health", tags=["Health & Readiness"])
+@app.get("/api/v1/health", tags=["Health & Readiness"])
 def health_check():
     """Liveness probe returning simple health status."""
     return {"status": "healthy"}
 
 @app.get("/ready", tags=["Health & Readiness"])
+@app.get("/api/v1/ready", tags=["Health & Readiness"])
 def readiness_check():
     """Readiness probe verifying PostgreSQL and Redis connections."""
     db_healthy = check_database_connection()

@@ -39,10 +39,10 @@ export async function publishExamApi(examId: string): Promise<Exam> {
   });
 }
 
-export async function assignExamApi(examId: string, classLevel: number): Promise<{ id: string; exam_id: string; class_level: number; status: string }> {
+export async function assignExamApi(examId: string, classLevel: number, startAt?: string, endAt?: string): Promise<{ id: string; exam_id: string; class_level: number; status: string }> {
   return apiRequest<{ id: string; exam_id: string; class_level: number; status: string }>(`/exams/${examId}/assign`, {
     method: 'POST',
-    body: JSON.stringify({ class_level: classLevel }),
+    body: JSON.stringify({ class_level: classLevel, start_at: startAt, end_at: endAt }),
   });
 }
 

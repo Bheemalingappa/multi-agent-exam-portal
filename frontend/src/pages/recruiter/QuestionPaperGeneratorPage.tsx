@@ -10,8 +10,10 @@ import {
   QuestionItem,
   SectionConfig,
   AnalyzeTopicResult,
-  AnalyzePdfResult
+  AnalyzePdfResult,
+  GeneratedSection
 } from '../../api/questionPapers';
+import { assignExamApi } from '../../api/exams';
 import { MathRenderer } from '../../components/common/MathRenderer';
 import {
   Sparkles,
@@ -20,23 +22,16 @@ import {
   Edit3,
   CheckCircle2,
   Download,
-  RefreshCw,
   AlertCircle,
-  Eye,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   Layers,
-  Settings,
   Loader2,
-  Globe,
   BookOpen,
   Send,
-  Search,
   BookMarked,
-  CheckSquare,
-  X,
-  FileText,
-  UploadCloud,
-  FileCheck
+  X
 } from 'lucide-react';
 
 const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -95,7 +90,13 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
+  const [assigning, setAssigning] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string>('');
+
+  // Assignment Modal Inputs
+  const [assignTargetClass, setAssignTargetClass] = useState<number>(7);
+  const [assignStartAt, setAssignStartAt] = useState<string>('');
+  const [assignEndAt, setAssignEndAt] = useState<string>('');
 
   // Marks Validation Calculation
   const totalCalculatedMarks = sectionsConfig.reduce((acc, s) => acc + (s.num_questions * s.marks_per_question), 0);
@@ -106,6 +107,11 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
   }, [totalCalculatedMarks]);
 
   const isMarksValid = Math.abs(totalCalculatedMarks - maximumMarks) < 0.01;
+
+  // Total Requested Questions Calculation
+  const totalRequestedQuestions = sectionsConfig.reduce((acc, s) => acc + (s.num_questions || 0), 0);
+  const actualTotalQuestions = activePaper ? activePaper.sections.reduce((acc, s) => acc + (s.questions?.length || 0), 0) : 0;
+  const isQuestionCountMatching = activePaper ? actualTotalQuestions === totalRequestedQuestions : true;
 
   const handleAnalyzeTopic = async () => {
     const targetTopic = exactTopic.trim() || topic.trim();
@@ -178,9 +184,6 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
     setSectionsConfig(sectionsConfig.filter((_, i) => i !== idx));
   };
 
-  // Total Requested Questions Calculation
-  const totalRequestedQuestions = sectionsConfig.reduce((acc, s) => acc + (s.num_questions || 0), 0);
-
   const handleGenerate = async () => {
     const effectiveExactTopic = exactTopic.trim() || topic.trim();
 
@@ -236,6 +239,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
       }
 
       setActivePaper(generated);
+      setAssignTargetClass(generated.class_level);
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Failed generating question paper.');
     } finally {
@@ -254,7 +258,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
       });
       setSuccessMsg('Question paper draft saved successfully!');
       if (saved.id) {
-        setActivePaper({ ...activePaper, id: saved.id });
+        setActivePaper({ ...activePaper, id: saved.id, status: 'DRAFT' });
       }
     } catch (err: any) {
       setError(err.message || 'Failed to save question paper draft.');
@@ -263,8 +267,12 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
     }
   };
 
-  const handlePublishAndAssign = async (targetClass: number) => {
+  const handlePublishOnly = async () => {
     if (!activePaper) return;
+    if (!isQuestionCountMatching) {
+      setError(`Question Count Mismatch: Current paper contains ${actualTotalQuestions} questions, but requested count is ${totalRequestedQuestions}. Please add or delete questions to match before publishing.`);
+      return;
+    }
     setPublishing(true);
     setError('');
     try {
@@ -274,9 +282,8 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
         paperId = saved.id;
       }
 
-      const published = await publishQuestionPaperApi(paperId!, targetClass);
-      setSuccessMsg(`Exam published & assigned to Class ${targetClass} successfully!`);
-      setShowAssignModal(false);
+      const published = await publishQuestionPaperApi(paperId!, activePaper.class_level);
+      setSuccessMsg('✨ Question paper published successfully! Click "Assign Exam" to schedule it for students.');
       if (published.published_exam_id) {
         setActivePaper({
           ...activePaper,
@@ -286,18 +293,120 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to publish and assign exam.');
+      setError(err.response?.data?.detail || err.message || 'Failed to publish question paper.');
     } finally {
       setPublishing(false);
     }
   };
 
+  const handleConfirmAssign = async () => {
+    if (!activePaper) return;
+    setAssigning(true);
+    setError('');
+    try {
+      let examId = activePaper.published_exam_id;
+      let paperId = activePaper.id;
+
+      if (!paperId) {
+        const saved = await saveQuestionPaperApi({ ...activePaper, status: 'DRAFT' });
+        paperId = saved.id;
+      }
+
+      if (!examId) {
+        const published = await publishQuestionPaperApi(paperId!, assignTargetClass);
+        examId = published.published_exam_id;
+      }
+
+      if (examId) {
+        await assignExamApi(examId, assignTargetClass, assignStartAt || undefined, assignEndAt || undefined);
+        setSuccessMsg(`✨ Exam assigned successfully to Class ${assignTargetClass}! Students of Class ${assignTargetClass} can now view & attempt the exam.`);
+        setShowAssignModal(false);
+        setActivePaper({
+          ...activePaper,
+          id: paperId,
+          status: 'ASSIGNED',
+          published_exam_id: examId
+        });
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Failed assigning exam to class.');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const reindexQuestions = (sections: GeneratedSection[]): GeneratedSection[] => {
+    let counter = 1;
+    return sections.map(sec => ({
+      ...sec,
+      num_questions: sec.questions.length,
+      section_total_marks: sec.questions.length * sec.marks_per_question,
+      questions: sec.questions.map(q => ({
+        ...q,
+        number: counter++
+      }))
+    }));
+  };
+
+  const handleDeleteQuestion = (secIdx: number, qIdx: number) => {
+    if (!activePaper) return;
+    const newSections = activePaper.sections.map((sec, sI) => {
+      if (sI !== secIdx) return sec;
+      const updatedQs = sec.questions.filter((_, qI) => qI !== qIdx);
+      return { ...sec, questions: updatedQs };
+    });
+    const reindexed = reindexQuestions(newSections);
+    setActivePaper({ ...activePaper, sections: reindexed });
+  };
+
+  const handleMoveQuestion = (secIdx: number, qIdx: number, direction: 'up' | 'down') => {
+    if (!activePaper) return;
+    const targetIdx = direction === 'up' ? qIdx - 1 : qIdx + 1;
+    const secQuestions = activePaper.sections[secIdx].questions;
+    if (targetIdx < 0 || targetIdx >= secQuestions.length) return;
+
+    const newSections = activePaper.sections.map((sec, sI) => {
+      if (sI !== secIdx) return sec;
+      const qs = [...sec.questions];
+      const temp = qs[qIdx];
+      qs[qIdx] = qs[targetIdx];
+      qs[targetIdx] = temp;
+      return { ...sec, questions: qs };
+    });
+    const reindexed = reindexQuestions(newSections);
+    setActivePaper({ ...activePaper, sections: reindexed });
+  };
+
+  const handleAddQuestion = (secIdx: number) => {
+    if (!activePaper) return;
+    const sec = activePaper.sections[secIdx];
+    const isMcq = sec.question_type === 'MCQ';
+    const newQ: QuestionItem = {
+      number: 0,
+      question: 'New question text...',
+      options: isMcq ? ['Option A', 'Option B', 'Option C', 'Option D'] : [],
+      correct_answer: isMcq ? 'Option A' : 'Expected answer text',
+      marks: sec.marks_per_question || 5,
+      explanation: 'Explanation for correct answer',
+      step_by_step_solution: 'Step 1: ...\nStep 2: ...'
+    };
+    const newSections = activePaper.sections.map((s, sI) => {
+      if (sI !== secIdx) return s;
+      return { ...s, questions: [...s.questions, newQ] };
+    });
+    const reindexed = reindexQuestions(newSections);
+    setActivePaper({ ...activePaper, sections: reindexed });
+  };
+
   const handleUpdateQuestion = () => {
     if (!editingQuestion || !activePaper) return;
     const { secIdx, qIdx, q } = editingQuestion;
-    const updatedSections = [...activePaper.sections];
-    updatedSections[secIdx].questions[qIdx] = q;
-    setActivePaper({ ...activePaper, sections: updatedSections });
+    const newSections = activePaper.sections.map((sec, sI) => {
+      if (sI !== secIdx) return sec;
+      const updatedQs = sec.questions.map((oldQ, qI) => qI === qIdx ? q : oldQ);
+      return { ...sec, questions: updatedQs };
+    });
+    setActivePaper({ ...activePaper, sections: newSections });
     setEditingQuestion(null);
   };
 
@@ -335,7 +444,11 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
         {activePaper && (
           <div className="flex items-center gap-3">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-              activePaper.status === 'PUBLISHED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              activePaper.status === 'ASSIGNED'
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                : activePaper.status === 'PUBLISHED'
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
             }`}>
               {activePaper.status || 'DRAFT'}
             </span>
@@ -400,7 +513,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <FileText className="w-4 h-4 text-sky-400" />
+                <BookMarked className="w-4 h-4 text-sky-400" />
                 <span>PDF Document</span>
               </button>
               <button
@@ -412,62 +525,21 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <Layers className="w-4 h-4 text-emerald-400" />
                 <span>PDF + Topic</span>
               </button>
             </div>
-
-            <p className="text-[11px] text-slate-400 italic">
-              {sourceType === 'TOPIC_ONLY' && '• Generates new exam questions strictly based on the exact topic entered below.'}
-              {sourceType === 'PDF_ONLY' && '• Upload a PDF document; AI analyzes the text content to generate educational questions.'}
-              {sourceType === 'PDF_AND_TOPIC' && '• The exact topic defines WHAT is tested; the uploaded PDF provides the context & depth.'}
-            </p>
           </div>
 
-          {/* Form Parameters Box */}
-          <div className="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 space-y-5 shadow-xl">
-            <h2 className="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-amber-400" /> Paper Parameters
-            </h2>
-
-            {/* Language Selector */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-                Question Paper Language
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {LANGUAGE_OPTIONS.map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => {
-                      setLanguage(lang);
-                      if (lang === 'Kannada') {
-                        setSubject('Kannada');
-                        setTopic('ಸಂಧಿಗಳು');
-                        setExactTopic('ಸಂಧಿಗಳು');
-                      }
-                    }}
-                    className={`py-2.5 px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      language === lang
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-lg shadow-amber-500/10'
-                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <span>{lang === 'Kannada' ? 'ಕನ್ನಡ (Kannada)' : 'English'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Class & Subject Selectors */}
+          {/* Form Inputs */}
+          <div className="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Class Level</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Class Level</label>
                 <select
                   value={classLevel}
                   onChange={(e) => setClassLevel(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors font-bold"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold"
                 >
                   {CLASS_OPTIONS.map((c) => (
                     <option key={c} value={c}>Class {c}</option>
@@ -476,11 +548,11 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Subject</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Subject</label>
                 <select
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold"
                 >
                   {SUBJECT_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -489,85 +561,46 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
               </div>
             </div>
 
-            {/* PDF UPLOAD SECTION (For PDF_ONLY and PDF_AND_TOPIC) */}
-            {(sourceType === 'PDF_ONLY' || sourceType === 'PDF_AND_TOPIC') && (
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-4 h-4" /> Upload Source PDF Document
-                  </label>
-                  {pdfAnalysisResult && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                      <FileCheck className="w-3 h-3" /> Analyzed ({pdfAnalysisResult.page_count} Pages)
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handlePdfFileSelect}
-                    className="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-500/20 file:text-sky-300 hover:file:bg-sky-500/30 cursor-pointer"
-                  />
-                  {pdfFile && !pdfAnalysisResult && (
-                    <button
-                      type="button"
-                      disabled={pdfAnalyzing}
-                      onClick={() => handleAnalyzePdf()}
-                      className="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shrink-0 flex items-center gap-1.5"
-                    >
-                      {pdfAnalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
-                      <span>Analyze PDF</span>
-                    </button>
-                  )}
-                </div>
-
-                {pdfAnalysisResult && (
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1.5">
-                    <div className="text-slate-300 font-bold flex items-center justify-between">
-                      <span>📄 {pdfAnalysisResult.filename}</span>
-                      <span className="text-[10px] text-slate-400">{pdfAnalysisResult.page_count} Pages</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400">{pdfAnalysisResult.summary}</p>
-                    {pdfAnalysisResult.suggested_topics?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="text-[10px] text-slate-500 font-semibold">Extracted Topics:</span>
-                        {pdfAnalysisResult.suggested_topics.map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => {
-                              setExactTopic(t);
-                              setTopic(t);
-                            }}
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30"
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Medium / Language</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-amber-300 font-bold"
+                >
+                  {LANGUAGE_OPTIONS.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
               </div>
-            )}
 
-            {/* EXACT TOPIC INPUT (For TOPIC_ONLY and PDF_AND_TOPIC) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Difficulty</label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white capitalize font-bold"
+                >
+                  {DIFFICULTY_OPTIONS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Exact Topic Input */}
             {(sourceType === 'TOPIC_ONLY' || sourceType === 'PDF_AND_TOPIC') && (
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                    {sourceType === 'PDF_AND_TOPIC' ? 'Exact Topic to Test from PDF' : 'Enter Exact Topic'}
-                  </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-semibold text-slate-300">Exact Topic to Test</label>
                   <button
                     type="button"
-                    disabled={analyzing || !exactTopic.trim()}
                     onClick={handleAnalyzeTopic}
-                    className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5"
+                    disabled={analyzing}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold"
                   >
-                    {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                    <span>✨ Analyze Topic</span>
+                    {analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Sparkles className="w-3 h-3" /> Analyze Topic</>}
                   </button>
                 </div>
                 <input
@@ -577,29 +610,26 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                     setExactTopic(e.target.value);
                     setTopic(e.target.value);
                   }}
-                  placeholder="e.g. ಸಂಧಿಗಳು, ಕನ್ನಡ ವರ್ಣಮಾಲೆ, Photosynthesis"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
+                  placeholder="e.g. Photosynthesis, Quadratic Equations, ಕನ್ನಡ ಸಂಧಿಗಳು"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-medium"
                 />
-                
-                {/* Quick Pickers */}
-                {sourceType === 'TOPIC_ONLY' && (
-                  <div className="mt-3 space-y-1.5">
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Quick Pick Topics:</span>
+
+                {/* Kannada Suggestions */}
+                {language.toLowerCase() === 'kannada' && (
+                  <div className="mt-2.5 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400">Popular Kannada Topics:</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {KANNADA_TOPIC_SUGGESTIONS.map((t) => (
+                      {KANNADA_TOPIC_SUGGESTIONS.map((sug, i) => (
                         <button
-                          key={t.name}
+                          key={i}
                           type="button"
                           onClick={() => {
-                            setExactTopic(t.name);
-                            setTopic(t.name);
-                            setClassLevel(t.class);
-                            setLanguage('Kannada');
-                            setSubject('Kannada');
+                            setExactTopic(sug.name);
+                            setTopic(sug.name);
                           }}
-                          className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-slate-800 transition-all"
+                          className="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 hover:border-amber-500/40 text-[10px] text-amber-300 transition-colors"
                         >
-                          {t.name} (Class {t.class})
+                          {sug.name}
                         </button>
                       ))}
                     </div>
@@ -608,61 +638,73 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
               </div>
             )}
 
-            {/* Difficulty, Duration & Marks */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Difficulty</label>
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white capitalize"
-                >
-                  {DIFFICULTY_OPTIONS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+            {/* PDF Upload Component */}
+            {(sourceType === 'PDF_ONLY' || sourceType === 'PDF_AND_TOPIC') && (
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                <label className="block text-xs font-bold text-slate-300">Upload PDF Context Document</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfFileSelect}
+                  className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-500/20 file:text-sky-300 hover:file:bg-sky-500/30 cursor-pointer"
+                />
+                {pdfAnalyzing && (
+                  <div className="flex items-center gap-2 text-xs text-sky-400">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Analyzing PDF context...</span>
+                  </div>
+                )}
+                {pdfAnalysisResult && (
+                  <div className="p-2.5 rounded-xl bg-sky-950/40 border border-sky-500/20 text-[11px] text-sky-300 space-y-1">
+                    <div><strong>PDF Document:</strong> {pdfAnalysisResult.filename} ({pdfAnalysisResult.page_count} Pages)</div>
+                    <div className="text-slate-400">{pdfAnalysisResult.summary}</div>
+                  </div>
+                )}
               </div>
+            )}
 
+            {/* Duration & Maximum Marks */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Duration (Mins)</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Duration (Minutes)</label>
                 <input
                   type="number"
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Max Marks</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Maximum Marks</label>
                 <input
                   type="number"
                   value={maximumMarks}
-                  onChange={(e) => setMaximumMarks(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white font-bold text-emerald-400"
+                  readOnly
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-emerald-400 font-bold bg-slate-950/50"
                 />
               </div>
             </div>
           </div>
 
-          {/* Section Builder Component */}
+          {/* Section Builder */}
           <div className="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-emerald-400" /> Section Configuration
-              </h2>
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-400" /> Section Configuration
+              </label>
               <button
                 type="button"
                 onClick={handleAddSectionConfig}
-                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 flex items-center gap-1"
+                className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Section
               </button>
             </div>
 
             {sectionsConfig.map((sec, idx) => (
-              <div key={idx} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
+              <div key={idx} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 relative">
+                <div className="flex justify-between items-center">
                   <input
                     type="text"
                     value={sec.name}
@@ -671,22 +713,22 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                       updated[idx].name = e.target.value;
                       setSectionsConfig(updated);
                     }}
-                    className="bg-transparent font-bold text-xs text-amber-300 focus:outline-none border-b border-dashed border-amber-500/40 pb-0.5"
+                    className="bg-transparent text-xs font-bold text-white border-b border-slate-800 focus:border-indigo-500 pb-1"
                   />
                   {sectionsConfig.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveSectionConfig(idx)}
-                      className="text-slate-500 hover:text-rose-400 transition-colors"
+                      className="text-slate-500 hover:text-rose-400"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 text-xs">
                   <div>
-                    <label className="block text-[10px] text-slate-400 mb-1">Question Type</label>
+                    <label className="block text-[10px] text-slate-400">Type</label>
                     <select
                       value={sec.question_type}
                       onChange={(e) => {
@@ -694,7 +736,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                         updated[idx].question_type = e.target.value;
                         setSectionsConfig(updated);
                       }}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 text-[11px]"
                     >
                       {QUESTION_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
@@ -703,96 +745,88 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-400 mb-1">Questions</label>
+                    <label className="block text-[10px] text-slate-400">Questions</label>
                     <input
                       type="number"
-                      min="1"
-                      max="100"
+                      min={1}
+                      max={100}
                       value={sec.num_questions}
                       onChange={(e) => {
                         const updated = [...sectionsConfig];
-                        updated[idx].num_questions = Math.max(1, Number(e.target.value));
+                        updated[idx].num_questions = Number(e.target.value);
                         setSectionsConfig(updated);
                       }}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center font-bold"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-bold text-[11px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-400 mb-1">Marks/Q</label>
+                    <label className="block text-[10px] text-slate-400">Marks/Q</label>
                     <input
                       type="number"
+                      step={0.5}
                       value={sec.marks_per_question}
                       onChange={(e) => {
                         const updated = [...sectionsConfig];
-                        updated[idx].marks_per_question = Math.max(0.5, Number(e.target.value));
+                        updated[idx].marks_per_question = Number(e.target.value);
                         setSectionsConfig(updated);
                       }}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-emerald-400 font-bold text-[11px]"
                     />
                   </div>
                 </div>
               </div>
             ))}
 
-            {/* Total Questions & Marks Footer */}
-            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-slate-300">
-              <span>Total Requested: <strong className="text-amber-400">{totalRequestedQuestions} Questions</strong></span>
-              <span>Calculated Marks: <strong className="text-emerald-400">{totalCalculatedMarks} Pts</strong></span>
+            <div className="pt-2 flex justify-between items-center text-xs font-bold text-slate-400 border-t border-slate-800">
+              <span>Total Questions: <strong className="text-white">{totalRequestedQuestions}</strong></span>
+              <span>Total Calculated: <strong className="text-emerald-400">{totalCalculatedMarks} Marks</strong></span>
             </div>
-
-            {/* Generate Button */}
-            <button
-              type="button"
-              disabled={generating}
-              onClick={handleGenerate}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Synthesizing Exam Paper...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  <span>Generate Exam Paper ({totalRequestedQuestions} Questions)</span>
-                </>
-              )}
-            </button>
           </div>
+
+          {/* Submit / Generate Button */}
+          <button
+            type="button"
+            disabled={generating}
+            onClick={handleGenerate}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 font-black text-sm tracking-wide shadow-xl shadow-indigo-600/25 flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-slate-950" />
+                <span>Synthesizing Exam Paper...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5 text-slate-950" />
+                <span>Generate Exam Paper</span>
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Right Column: AI Analysis Card & Paper Preview */}
+        {/* Right Column: Question Paper Preview & Interactive Editor */}
         <div className="lg:col-span-7 space-y-6">
-
-          {/* AI Curriculum & Topic Analysis Card */}
+          {/* Topic Analysis Results Card */}
           {analysisResult && (
-            <div className="bg-slate-900/90 rounded-3xl border border-amber-500/30 p-6 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" /> AI Topic & Curriculum Analysis
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  {analysisResult.topic} (Class {analysisResult.class_level})
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <strong className="text-slate-300 block mb-1">Key Curriculum Concepts:</strong>
+            <div className="bg-slate-900/90 rounded-3xl border border-slate-800 p-5 space-y-3 shadow-xl">
+              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-4 h-4" /> Educational Topic Intelligence: {analysisResult.topic}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                  <strong className="text-slate-300 block mb-1">Key Concepts:</strong>
                   <ul className="list-disc list-inside text-slate-400 space-y-1">
                     {analysisResult.key_concepts.map((kc, i) => (
                       <li key={i}>{kc}</li>
                     ))}
                   </ul>
                 </div>
-
-                <div>
-                  <strong className="text-slate-300 block mb-1">Learning Objectives:</strong>
+                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                  <strong className="text-slate-300 block mb-1">Question Areas:</strong>
                   <ul className="list-disc list-inside text-slate-400 space-y-1">
-                    {analysisResult.learning_objectives.map((lo, i) => (
-                      <li key={i}>{lo}</li>
+                    {analysisResult.question_areas.map((qa, i) => (
+                      <li key={i}>{qa}</li>
                     ))}
                   </ul>
                 </div>
@@ -854,6 +888,13 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                     {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save Draft'}
                   </button>
                   <button
+                    onClick={handlePublishOnly}
+                    disabled={publishing}
+                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+                  >
+                    {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><CheckCircle2 className="w-3.5 h-3.5" /> Publish Paper</>}
+                  </button>
+                  <button
                     onClick={() => setShowAssignModal(true)}
                     className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
                   >
@@ -861,6 +902,18 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Question Count Mismatch Warning Banner */}
+              {!isQuestionCountMatching && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>
+                      Question Count Mismatch: Current paper has <strong>{actualTotalQuestions}</strong> questions, but exact requested count is <strong>{totalRequestedQuestions}</strong>. Please add or delete questions to match before publishing.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Tabs: Question Paper vs Answer Key */}
               <div className="flex border-b border-slate-800 gap-4">
@@ -870,7 +923,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                     activeTab === 'paper' ? 'border-amber-400 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
                   }`}
                 >
-                  <BookOpen className="w-4 h-4" /> QUESTION PAPER
+                  <BookOpen className="w-4 h-4" /> QUESTION PAPER REVIEW ({actualTotalQuestions} Questions)
                 </button>
                 <button
                   onClick={() => setActiveTab('answers')}
@@ -892,9 +945,18 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
 
                   {activePaper.sections.map((sec, secIdx) => (
                     <div key={secIdx} className="space-y-4">
-                      <h3 className="text-sm font-bold text-amber-300 uppercase tracking-wider border-b border-slate-800 pb-2">
-                        {sec.name} ({sec.num_questions} Questions × {sec.marks_per_question} Marks = {sec.section_total_marks} Marks)
-                      </h3>
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <h3 className="text-sm font-bold text-amber-300 uppercase tracking-wider">
+                          {sec.name} ({sec.questions.length} Questions × {sec.marks_per_question} Marks = {sec.questions.length * sec.marks_per_question} Marks)
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => handleAddQuestion(secIdx)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold flex items-center gap-1 border border-slate-700"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Question
+                        </button>
+                      </div>
 
                       <div className="space-y-4">
                         {sec.questions.map((q, qIdx) => (
@@ -909,12 +971,43 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                                   <span className="text-[10px] text-slate-400">[{q.marks} Marks]</span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => setEditingQuestion({ secIdx, qIdx, q: { ...q } })}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
+
+                              <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveQuestion(secIdx, qIdx, 'up')}
+                                  disabled={qIdx === 0}
+                                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30"
+                                  title="Move Up"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveQuestion(secIdx, qIdx, 'down')}
+                                  disabled={qIdx === sec.questions.length - 1}
+                                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30"
+                                  title="Move Down"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingQuestion({ secIdx, qIdx, q: { ...q } })}
+                                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+                                  title="Edit Question"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteQuestion(secIdx, qIdx)}
+                                  className="p-1 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                                  title="Delete Question"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
                             {/* Options for MCQ */}
@@ -1012,17 +1105,56 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Correct Answer</label>
-              <input
-                type="text"
-                value={editingQuestion.q.correct_answer}
-                onChange={(e) => setEditingQuestion({
-                  ...editingQuestion,
-                  q: { ...editingQuestion.q, correct_answer: e.target.value }
-                })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
-              />
+            {/* MCQ Options Editing */}
+            {editingQuestion.q.options && editingQuestion.q.options.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-400">MCQ Options</label>
+                {editingQuestion.q.options.map((opt, oI) => (
+                  <div key={oI} className="flex items-center gap-2">
+                    <span className="w-6 text-xs font-bold text-amber-400">{String.fromCharCode(65 + oI)}:</span>
+                    <input
+                      type="text"
+                      value={opt}
+                      onChange={(e) => {
+                        const newOpts = [...(editingQuestion.q.options || [])];
+                        newOpts[oI] = e.target.value;
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          q: { ...editingQuestion.q, options: newOpts }
+                        });
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Correct Answer</label>
+                <input
+                  type="text"
+                  value={editingQuestion.q.correct_answer}
+                  onChange={(e) => setEditingQuestion({
+                    ...editingQuestion,
+                    q: { ...editingQuestion.q, correct_answer: e.target.value }
+                  })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Marks</label>
+                <input
+                  type="number"
+                  value={editingQuestion.q.marks}
+                  onChange={(e) => setEditingQuestion({
+                    ...editingQuestion,
+                    q: { ...editingQuestion.q, marks: Number(e.target.value) }
+                  })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-emerald-400 font-bold"
+                />
+              </div>
             </div>
 
             <div>
@@ -1033,6 +1165,19 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                 onChange={(e) => setEditingQuestion({
                   ...editingQuestion,
                   q: { ...editingQuestion.q, explanation: e.target.value }
+                })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Step-by-Step Solution</label>
+              <textarea
+                rows={3}
+                value={editingQuestion.q.step_by_step_solution || ''}
+                onChange={(e) => setEditingQuestion({
+                  ...editingQuestion,
+                  q: { ...editingQuestion.q, step_by_step_solution: e.target.value }
                 })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white"
               />
@@ -1065,20 +1210,43 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
             </h3>
 
             <p className="text-xs text-slate-400">
-              Publishing this exam will make it active for students of the selected class. Students will see this exam on their dashboard and can start attempts.
+              Assigning this exam will make it active for students of the selected class. Students will see this exam on their portal dashboard and can start attempts.
             </p>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">Select Target Class</label>
-              <select
-                defaultValue={activePaper.class_level}
-                id="assignClassSelect"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-bold"
-              >
-                {CLASS_OPTIONS.map((c) => (
-                  <option key={c} value={c}>Class {c}</option>
-                ))}
-              </select>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Target Class Level</label>
+                <select
+                  value={assignTargetClass}
+                  onChange={(e) => setAssignTargetClass(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-bold"
+                >
+                  {CLASS_OPTIONS.map((c) => (
+                    <option key={c} value={c}>Class {c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">Start Date/Time (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={assignStartAt}
+                    onChange={(e) => setAssignStartAt(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">End Date/Time (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={assignEndAt}
+                    onChange={(e) => setAssignEndAt(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -1089,15 +1257,11 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
                 Cancel
               </button>
               <button
-                disabled={publishing}
-                onClick={() => {
-                  const selectEl = document.getElementById('assignClassSelect') as HTMLSelectElement;
-                  const selectedClass = selectEl ? Number(selectEl.value) : activePaper.class_level;
-                  handlePublishAndAssign(selectedClass);
-                }}
+                disabled={assigning}
+                onClick={handleConfirmAssign}
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-1.5"
               >
-                {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Publish & Assign Now'}
+                {assigning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirm Assignment'}
               </button>
             </div>
           </div>
