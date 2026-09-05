@@ -86,7 +86,7 @@ export const CreateExamPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {step === 1 && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Target Class Track</label>
                   <select
@@ -155,7 +155,7 @@ export const CreateExamPage: React.FC = () => {
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Difficulty Level</label>
                   <select
@@ -183,7 +183,7 @@ export const CreateExamPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Maximum Marks</label>
                   <input

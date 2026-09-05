@@ -147,9 +147,9 @@ export const CandidateIDEPage: React.FC = () => {
     <div className="min-h-[calc(100vh-100px)] flex flex-col space-y-4 font-sans max-w-7xl mx-auto px-4 py-4">
       {/* Top Header Bar */}
       <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-400" />
+            <FileText className="w-5 h-5 text-emerald-400 shrink-0" />
             <div>
               <h1 className="font-black text-white text-base leading-tight">
                 {examMeta?.title || 'Examination Workspace'}
@@ -162,7 +162,7 @@ export const CandidateIDEPage: React.FC = () => {
           <ProctoringIndicator connected={examWsConnected} />
         </div>
 
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
           {savingStatus === 'saving' && (
             <span className="text-amber-400 font-medium flex items-center gap-1">
               <Loader2 className="w-3 h-3 animate-spin" /> Saving...
@@ -278,7 +278,7 @@ export const CandidateIDEPage: React.FC = () => {
 
         {/* Right Column: Question Content & Input */}
         <div className="lg:col-span-8">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-6 shadow-xl min-h-[500px] flex flex-col justify-between">
+          <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-6 shadow-xl min-h-[500px] flex flex-col justify-between">
             {activeQuestion ? (
               <div className="space-y-6">
                 {/* Question Header */}
@@ -287,7 +287,7 @@ export const CandidateIDEPage: React.FC = () => {
                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
                       Question {activeQuestion.number || activeQuestionIndex + 1} of {questions.length}
                     </span>
-                    <h2 className="text-lg font-bold text-white mt-1">
+                    <h2 className="text-base sm:text-lg font-bold text-white mt-1">
                       {activeQuestion.question || activeQuestion.title || `Question ${activeQuestionIndex + 1}`}
                     </h2>
                   </div>
@@ -313,20 +313,20 @@ export const CandidateIDEPage: React.FC = () => {
                             key={optIdx}
                             onClick={() => handleAnswerChange(qKey, optPrefix)}
                             disabled={isSubmitted}
-                            className={`w-full p-4 rounded-xl text-left text-xs font-medium transition-all flex items-center gap-3 border ${
+                            className={`w-full p-3.5 sm:p-4 rounded-xl text-left text-xs font-medium transition-all flex items-start gap-3 border ${
                               isSelected
                                 ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-md'
                                 : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
                             } ${isSubmitted ? 'cursor-not-allowed opacity-80' : ''}`}
                           >
-                            <span className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 border ${
+                            <span className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 border mt-0.5 ${
                               isSelected
                                 ? 'bg-emerald-500 text-white border-emerald-400'
                                 : 'bg-slate-900 text-slate-400 border-slate-700'
                             }`}>
                               {optPrefix}
                             </span>
-                            <span className="leading-relaxed">{opt}</span>
+                            <span className="leading-relaxed pt-1">{opt}</span>
                           </button>
                         );
                       })}
@@ -355,11 +355,11 @@ export const CandidateIDEPage: React.FC = () => {
             )}
 
             {/* Navigation Footer */}
-            <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
+            <div className="pt-6 border-t border-slate-800 flex items-center justify-between gap-2">
               <button
                 onClick={() => setActiveQuestionIndex((prev) => Math.max(0, prev - 1))}
                 disabled={activeQuestionIndex === 0}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all disabled:opacity-40"
+                className="px-3 sm:px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all disabled:opacity-40"
               >
                 Previous Question
               </button>
@@ -367,7 +367,7 @@ export const CandidateIDEPage: React.FC = () => {
               <button
                 onClick={() => setActiveQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))}
                 disabled={activeQuestionIndex >= questions.length - 1}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all disabled:opacity-40"
+                className="px-3 sm:px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all disabled:opacity-40"
               >
                 Next Question
               </button>
@@ -379,7 +379,7 @@ export const CandidateIDEPage: React.FC = () => {
       {/* Final Submit Confirmation Modal */}
       {showSubmitConfirmModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-[calc(100vw-24px)] max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-amber-400">
               <HelpCircle className="w-6 h-6" />
               <h3 className="text-lg font-bold text-white">Confirm Exam Submission</h3>

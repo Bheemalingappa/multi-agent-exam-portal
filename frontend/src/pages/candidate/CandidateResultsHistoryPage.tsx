@@ -64,45 +64,45 @@ export const CandidateResultsHistoryPage: React.FC = () => {
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
           </button>
-          <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
-            <Award className="w-8 h-8 text-emerald-400" /> Student Results & Performance Dashboard
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            <Award className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-400 shrink-0" /> Student Results & Performance Dashboard
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             Track your class assessments, subject proficiency scores, and multi-agent evaluation reports.
           </p>
         </div>
       </div>
 
       {/* Overview Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">Attempted</span>
-          <div className="text-2xl font-black text-white">{summary?.total_attempted || 0}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Attempted</span>
+          <div className="text-xl sm:text-2xl font-black text-white">{summary?.total_attempted || 0}</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">Completed</span>
-          <div className="text-2xl font-black text-emerald-400">{summary?.completed_exams || 0}</div>
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Completed</span>
+          <div className="text-xl sm:text-2xl font-black text-emerald-400">{summary?.completed_exams || 0}</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">Average Score</span>
-          <div className="text-2xl font-black text-indigo-400">{summary?.average_percentage || 0}%</div>
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Average Score</span>
+          <div className="text-xl sm:text-2xl font-black text-indigo-400">{summary?.average_percentage || 0}%</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">Highest Score</span>
-          <div className="text-2xl font-black text-cyan-400">{summary?.highest_score || 0}%</div>
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Highest Score</span>
+          <div className="text-xl sm:text-2xl font-black text-cyan-400">{summary?.highest_score || 0}%</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">Overall Grade</span>
-          <div className="text-2xl font-black text-amber-400">{summary?.current_grade || 'N/A'}</div>
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Overall Grade</span>
+          <div className="text-xl sm:text-2xl font-black text-amber-400">{summary?.current_grade || 'N/A'}</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">Latest Exam</span>
-          <div className="text-sm font-bold text-slate-200 truncate">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Latest Exam</span>
+          <div className="text-xs sm:text-sm font-bold text-slate-200 truncate">
             {summary?.latest_result ? `${summary.latest_result.percentage}% (${summary.latest_result.grade})` : 'None'}
           </div>
         </div>

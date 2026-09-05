@@ -41,7 +41,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl overflow-hidden">
       {/* Left Column: Branding & Highlights */}
-      <div className="lg:col-span-6 p-8 lg:p-12 bg-gradient-to-br from-indigo-950/80 via-slate-900 to-slate-950 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
+      <div className="lg:col-span-6 p-5 sm:p-8 lg:p-12 bg-gradient-to-br from-indigo-950/80 via-slate-900 to-slate-950 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 relative overflow-hidden">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 space-y-6">
@@ -91,7 +91,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Right Column: Sign In Card */}
-      <div className="lg:col-span-6 p-8 lg:p-12 flex flex-col justify-center bg-slate-900/60">
+      <div className="lg:col-span-6 p-5 sm:p-8 lg:p-12 flex flex-col justify-center bg-slate-900/60">
         <div className="max-w-md w-full mx-auto space-y-6">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Welcome Back</h2>

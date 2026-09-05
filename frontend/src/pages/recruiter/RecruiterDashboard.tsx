@@ -59,7 +59,7 @@ export const RecruiterDashboard: React.FC = () => {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Welcome Top Hero Banner */}
-      <div className="p-8 rounded-3xl bg-gradient-to-r from-indigo-950/90 via-slate-900 to-slate-950 border border-indigo-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl relative overflow-hidden">
+      <div className="p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-950/90 via-slate-900 to-slate-950 border border-indigo-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl relative overflow-hidden">
         <div className="space-y-3 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
             <Sparkles className="w-4 h-4 text-amber-400" />
@@ -187,7 +187,7 @@ export const RecruiterDashboard: React.FC = () => {
             <BookOpen className="w-5 h-5 text-amber-400" /> Recent Question Papers & Exam Bank
           </h2>
 
-          <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+          <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold overflow-x-auto max-w-full">
             <button
               onClick={() => setRecentTab('all')}
               className={`px-3 py-1.5 rounded-lg transition-all ${recentTab === 'all' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}

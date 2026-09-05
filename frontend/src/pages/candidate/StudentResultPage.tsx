@@ -62,7 +62,7 @@ export const StudentResultPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 lg:p-10 space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10 space-y-8">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -75,7 +75,7 @@ export const StudentResultPage: React.FC = () => {
         </div>
 
         {/* Hero Score Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <Award className="w-48 h-48 text-emerald-400" />
           </div>
@@ -85,11 +85,11 @@ export const StudentResultPage: React.FC = () => {
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">
                 <span>Class {result.class_level || 10}</span> • <span>{result.subject || 'General'}</span>
               </div>
-              <h1 className="text-2xl lg:text-3xl font-extrabold text-white">{result.title}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white">{result.title}</h1>
             </div>
 
             {/* Score Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-4 border-t border-slate-800">
               <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-1">
                 <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
                   <FileCheck className="w-3.5 h-3.5 text-blue-400" /> Score
@@ -139,8 +139,8 @@ export const StudentResultPage: React.FC = () => {
 
           <div className="space-y-3">
             {(result.question_summary || []).map((q: any, idx: number) => (
-              <div key={q.question_id || idx} className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 space-y-3 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
+              <div key={q.question_id || idx} className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold px-2 py-0.5 bg-slate-800 text-slate-300 rounded-md">

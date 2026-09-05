@@ -77,7 +77,7 @@ export const ExamDetailPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-slate-850 p-8 rounded-2xl border border-slate-700 space-y-6">
+      <div className="bg-slate-850 p-5 sm:p-8 rounded-2xl border border-slate-700 space-y-6">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 text-xs font-semibold uppercase rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
@@ -87,12 +87,12 @@ export const ExamDetailPage: React.FC = () => {
               <Clock className="w-3.5 h-3.5" /> {exam.duration_minutes} minutes
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-white">{exam.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">{exam.title}</h1>
           <p className="text-slate-300 text-sm leading-relaxed">{exam.description}</p>
         </div>
 
         {/* Assessment Rules */}
-        <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="p-4 sm:p-6 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <h3 className="text-md font-semibold text-white flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-400" /> Assessment Rules & Proctoring
           </h3>
@@ -104,11 +104,11 @@ export const ExamDetailPage: React.FC = () => {
           </ul>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-800">
           <span className="text-sm text-slate-400">Allowed Attempts: <span className="font-semibold text-white">{exam.max_attempts}</span></span>
           <button
             onClick={() => setShowConfirmModal(true)}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/30"
+            className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/30"
           >
             <Play className="w-4 h-4 fill-current" /> Start Assessment
           </button>
@@ -118,7 +118,7 @@ export const ExamDetailPage: React.FC = () => {
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-md w-full space-y-6 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-md w-[calc(100vw-24px)] max-h-[90vh] overflow-y-auto space-y-6 shadow-2xl">
             <h3 className="text-xl font-bold text-white">Start Exam Attempt?</h3>
             <p className="text-sm text-slate-300 leading-relaxed">
               Once started, the {exam.duration_minutes}-minute server countdown timer will begin immediately.

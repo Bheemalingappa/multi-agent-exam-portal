@@ -422,7 +422,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-8 space-y-6 sm:space-y-8">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -532,7 +532,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
           </div>
 
           {/* Form Inputs */}
-          <div className="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+          <div className="bg-slate-900/90 p-4 sm:p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Class Level</label>
@@ -688,7 +688,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
           </div>
 
           {/* Section Builder */}
-          <div className="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+          <div className="bg-slate-900/90 p-4 sm:p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                 <Layers className="w-4 h-4 text-indigo-400" /> Section Configuration
@@ -1089,7 +1089,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
       {/* Edit Question Modal */}
       {editingQuestion && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl">
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 max-w-lg w-[calc(100vw-24px)] max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl">
             <h3 className="text-sm font-bold text-white">Edit Question #{editingQuestion.q.number}</h3>
 
             <div>
@@ -1204,7 +1204,7 @@ export const QuestionPaperGeneratorPage: React.FC = () => {
       {/* Assign Exam Modal */}
       {showAssignModal && activePaper && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 max-w-md w-[calc(100vw-24px)] max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Send className="w-4 h-4 text-emerald-400" /> Assign Exam to Student Class
             </h3>

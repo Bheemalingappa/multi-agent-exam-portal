@@ -213,7 +213,7 @@ export const TeacherQuestionPapersPage: React.FC = () => {
       {/* Assign Modal */}
       {assigningPaper && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-[calc(100vw-24px)] max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Send className="w-5 h-5 text-emerald-400" /> ASSIGN EXAM TO CLASS
