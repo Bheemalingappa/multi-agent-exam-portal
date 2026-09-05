@@ -63,7 +63,8 @@ def register_user(payload: RegisterSchema, db: Session = Depends(get_db)):
         email=payload.email,
         password_hash=hashed_pwd,
         role=payload.role,
-        class_level=payload.class_level
+        class_level=payload.class_level,
+        is_active=True,
     )
     db.add(new_user)
     db.commit()

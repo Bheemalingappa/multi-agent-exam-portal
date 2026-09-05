@@ -40,6 +40,7 @@ def create_exam(
         duration_minutes=payload.duration_minutes,
         max_score=payload.max_score,
         max_attempts=payload.max_attempts,
+        is_active=True,
         is_published=False,
         created_by=current_user.id
     )
@@ -77,10 +78,21 @@ def list_exams(
 
     if current_user.role == "candidate":
         target_class = get_student_class_level(current_user)
-        assigned_exam_ids = db.query(ExamAssignment.exam_id).filter(
+
+        assignments = db.query(ExamAssignment).filter(
             ExamAssignment.class_level == target_class,
             ExamAssignment.status == "ACTIVE"
-        ).subquery()
+        ).all()
+
+        assigned_exam_ids = [
+            assignment.exam_id
+            for assignment in assignments
+            if assignment.exam_id is not None
+        ]
+
+        if not assigned_exam_ids:
+            return []
+
         query = query.filter(
             Exam.is_active == True,
             Exam.is_published == True,
