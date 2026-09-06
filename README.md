@@ -415,4 +415,54 @@ multi-agent-exam-portal/
 
 **Bheemalingappa**
 - Portfolio Project: Multi-Agent Exam & Evaluation Portal (EduExam)
-- Repository: `Bheemalingappa/bheemalingappa-ai-data-science-portfolio`
+- Repository: `Bheemalingappa/multi-agent-exam-portal`
+
+---
+
+## Recruiter Demo - Screenshots
+
+### Authentication & Roles
+
+![EduExam Login](screenshots/01-login.png)
+
+### AI Question Paper Generator
+
+Configure class, subject, language, difficulty, exact topic, and question count before generating a new assessment with Google Gemini.
+
+![AI Question Generator](screenshots/02-ai-question-generator.png)
+
+### AI-Generated Question Review
+
+Teachers can review, edit, add, delete, and reorder generated questions before publishing.
+
+![Question Review](screenshots/03-generated-question-review.png)
+
+### Publish & Assign
+
+Published papers can be downloaded as question papers or teacher-only solution keys, then explicitly assigned to the target class.
+
+![Publish and Assign](screenshots/04-publish-and-assign.png)
+
+### Student Exam Catalog
+
+Students see exams assigned to their own class.
+
+![Student Exam](screenshots/05-student-exam.png)
+
+### Secure Exam-Taking Workspace
+
+Server-authoritative countdown timing, autosave, question navigation, and proctoring telemetry support secure assessment sessions.
+
+![Exam Taking](screenshots/06-exam-taking.png)
+
+### Student Results
+
+Students can review their evaluated score, grade, subject proficiency, and performance history.
+
+![Student Results](screenshots/07-results.png)
+
+### Performance Analytics
+
+Educators can analyze candidate performance, submissions, scores, and grade distributions.
+
+![Analytics](screenshots/08-analytics.png)
